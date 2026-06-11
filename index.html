@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>For You</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0b0e;
+    --bg2: #141218;
+    --ink: #e8e3da;
+    --muted: #8d8678;
+    --accent: #c9a86a;
+    --line: rgba(201,168,106,.25);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg); color: var(--ink);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ''; position: fixed; inset: -50%;
+    background:
+      radial-gradient(ellipse 60% 40% at 70% 20%, rgba(201,168,106,.06), transparent),
+      radial-gradient(ellipse 50% 50% at 20% 80%, rgba(120,90,140,.05), transparent);
+    pointer-events: none; z-index: 0;
+  }
+  /* film grain */
+  body::after {
+    content: ''; position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---- Falling pictures ---- */
+  #petals {
+    position: fixed; inset: 0; z-index: 2;
+    pointer-events: none; overflow: hidden;
+  }
+  .petal {
+    position: absolute; top: -50px;
+    border-radius: 50%;          /* circular pictures; delete this line for square */
+    object-fit: cover;
+    animation: fall linear forwards, sway ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes fall {
+    to { transform: translateY(115vh) rotate(360deg); }
+  }
+  @keyframes sway {
+    from { margin-left: -25px; }
+    to   { margin-left: 25px; }
+  }
+
+  .screen {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 32px 24px;
+    padding-top: calc(32px + env(safe-area-inset-top));
+    padding-bottom: calc(32px + env(safe-area-inset-bottom));
+    opacity: 0; pointer-events: none;
+    transition: opacity .8s ease;
+    overflow-y: auto;
+  }
+  .screen.active { opacity: 1; pointer-events: auto; }
+
+  /* ============ INTRO / WARNING ============ */
+  #intro { background: var(--bg); z-index: 50; }
+  .intro-card {
+    max-width: 440px; width: 100%; text-align: center;
+    border: 1px solid var(--line); border-radius: 2px;
+    padding: 56px 32px 44px; position: relative;
+    background: linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+    animation: rise 1.2s cubic-bezier(.16,1,.3,1) both .3s;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+  .intro-card .ornament {
+    font-size: 11px; letter-spacing: .5em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 28px;
+  }
+  .intro-card h1 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 400;
+    font-size: clamp(30px, 8vw, 40px); line-height: 1.25; margin-bottom: 20px;
+  }
+  .intro-card p {
+    font-size: 14px; font-weight: 300; line-height: 1.9; color: var(--muted);
+  }
+  .intro-x {
+    position: absolute; top: 14px; right: 14px;
+    width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%;
+    background: none; color: var(--muted); cursor: pointer;
+    font-size: 14px; transition: all .3s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .intro-x:active { background: var(--accent); color: var(--bg); }
+  .divider {
+    width: 48px; height: 1px; background: var(--accent);
+    margin: 24px auto; opacity: .6;
+  }
+
+  /* ============ MENU ============ */
+  #menu .menu-head { text-align: center; margin-bottom: 52px; }
+  #menu .menu-head .kicker {
+    font-size: 10px; letter-spacing: .55em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 16px;
+  }
+  #menu .menu-head h2 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 400;
+    font-size: clamp(34px, 9vw, 46px); font-style: italic;
+  }
+  .menu-list { width: 100%; max-width: 400px; }
+  .menu-item {
+    width: 100%; background: none; border: none; border-top: 1px solid var(--line);
+    padding: 26px 8px; cursor: pointer; color: var(--ink);
+    display: flex; align-items: center; justify-content: space-between;
+    text-align: left; transition: padding .3s;
+    opacity: 0; animation: rise .9s cubic-bezier(.16,1,.3,1) both;
+  }
+  .menu-item:last-child { border-bottom: 1px solid var(--line); }
+  .menu-item:nth-child(1) { animation-delay: .15s; }
+  .menu-item:nth-child(2) { animation-delay: .3s; }
+  .menu-item:nth-child(3) { animation-delay: .45s; }
+  .menu-item:active { padding-left: 18px; }
+  .menu-item .num {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    color: var(--accent); font-size: 15px; width: 36px; flex-shrink: 0;
+  }
+  .menu-item .label { flex: 1; }
+  .menu-item .label b {
+    display: block; font-family: 'Cormorant Garamond', serif;
+    font-size: 24px; font-weight: 500; margin-bottom: 3px;
+  }
+  .menu-item .label span { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  .menu-item .arr { color: var(--accent); font-size: 18px; }
+
+  /* ============ SUB-SCREEN CHROME ============ */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; padding-top: calc(16px + env(safe-area-inset-top));
+    background: linear-gradient(180deg, var(--bg) 40%, transparent);
+  }
+  .back {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 11px; letter-spacing: .3em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px; padding: 10px 0;
+  }
+  .back::before { content: '←'; color: var(--accent); font-size: 16px; }
+  .topbar .title {
+    font-size: 10px; letter-spacing: .4em; text-transform: uppercase; color: var(--muted);
+  }
+
+  /* ============ LETTER ============ */
+  #letter { justify-content: flex-start; padding-top: calc(90px + env(safe-area-inset-top)); }
+  .letter-wrap { max-width: 520px; width: 100%; }
+  .letter-date {
+    font-size: 11px; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 28px; text-align: center;
+  }
+  .letter-body {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 21px; line-height: 2; white-space: pre-line; min-height: 200px;
+  }
+  .letter-body .cursor {
+    display: inline-block; width: 1px; height: 1.1em; background: var(--accent);
+    vertical-align: text-bottom; animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .letter-sign {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 26px; color: var(--accent); margin-top: 40px; text-align: right;
+    opacity: 0; transition: opacity 1.5s; padding-bottom: 40px;
+  }
+  .letter-sign.show { opacity: 1; }
+
+  /* ============ GALLERY ============ */
+  #gallery { padding-top: calc(80px + env(safe-area-inset-top)); }
+  .stage {
+    width: 100%; max-width: 460px; flex: 1; min-height: 0;
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  .stage .media {
+    max-width: 100%; max-height: 100%; border-radius: 3px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6);
+    animation: fadeSlide .6s cubic-bezier(.16,1,.3,1) both;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  @keyframes fadeSlide { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+  .caption {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 18px; color: var(--muted); text-align: center;
+    margin-top: 22px; min-height: 24px;
+  }
+  .gallery-nav {
+    display: flex; align-items: center; gap: 36px; margin-top: 20px;
+    padding-bottom: 10px;
+  }
+  .nav-arrow {
+    width: 54px; height: 54px; border-radius: 50%;
+    border: 1px solid var(--line); background: none; color: var(--ink);
+    font-size: 18px; cursor: pointer; transition: all .25s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav-arrow:active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .gallery-count {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    color: var(--muted); font-size: 16px; min-width: 64px; text-align: center;
+  }
+  .gallery-count b { color: var(--accent); font-weight: 500; }
+
+  /* ============ SONGS ============ */
+  #songs { justify-content: flex-start; padding-top: calc(90px + env(safe-area-inset-top)); }
+  .songs-wrap { width: 100%; max-width: 480px; }
+  .songs-note {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    text-align: center; color: var(--muted); font-size: 18px; margin-bottom: 36px;
+  }
+  .track { border-top: 1px solid var(--line); padding: 20px 4px; }
+  .track:last-child { border-bottom: 1px solid var(--line); }
+  .track-row { display: flex; align-items: center; gap: 18px; }
+  .play-btn {
+    width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+    border: 1px solid var(--line); background: none; color: var(--accent);
+    cursor: pointer; font-size: 13px; transition: all .25s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .track.playing .play-btn { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .track-meta { flex: 1; min-width: 0; }
+  .track-meta b {
+    display: block; font-family: 'Cormorant Garamond', serif;
+    font-weight: 500; font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .track-meta span { font-size: 11px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); }
+  .track-progress {
+    height: 2px; background: rgba(255,255,255,.08); border-radius: 2px;
+    margin-top: 16px; overflow: hidden; display: none;
+  }
+  .track.playing .track-progress { display: block; }
+  .track-progress i { display: block; height: 100%; width: 0%; background: var(--accent); transition: width .3s linear; }
+
+  /* ============ AMBIENT MUSIC TOGGLE ============ */
+  .music-toggle {
+    position: fixed; bottom: calc(18px + env(safe-area-inset-bottom)); right: 18px; z-index: 40;
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 1px solid var(--line); background: rgba(12,11,14,.7);
+    backdrop-filter: blur(10px); color: var(--accent); cursor: pointer;
+    display: none; align-items: center; justify-content: center; gap: 2px;
+  }
+  .music-toggle.show { display: flex; }
+  .music-toggle .bar { width: 2px; background: var(--accent); border-radius: 2px; height: 6px; }
+  .music-toggle.on .bar { animation: eq .9s ease-in-out infinite alternate; }
+  .music-toggle.on .bar:nth-child(2) { animation-delay: .2s; }
+  .music-toggle.on .bar:nth-child(3) { animation-delay: .4s; }
+  @keyframes eq { from { height: 4px; } to { height: 14px; } }
+</style>
+</head>
+<body>
+
+<audio id="bgMusic" loop src="BIGBANG - HARU HARU(하루하루) MV.mp3"></audio>
+
+<!-- ============ 1. WARNING ============ -->
+<div class="screen active" id="intro">
+  <div class="intro-card">
+    <button class="intro-x" onclick="enter()">✕</button>
+    <div class="ornament">· Notice ·</div>
+    <h1>Хэлж чадаагүй<br><em>үгс</em></h1>
+    <div class="divider"></div>
+    <p>Хэлх гэсэн үг тархинд, харуулах гэсэн зурагс зүрхэнд шингэсэн болно.<br>
+    Дуугын нээж үзээрэй. 🎧</p>
+    <p>Баярлалаа ❤️</p>
+  </div>
+</div>
+
+<!-- ============ 2. MENU ============ -->
+<div class="screen" id="menu">
+  <div class="menu-head">
+    <div class="kicker">A small archive</div>
+    <h2>of us</h2>
+  </div>
+  <div class="menu-list">
+    <button class="menu-item" onclick="go('letter')">
+      <span class="num">I.</span>
+      <span class="label"><b>Тархи</b><span>Хэлж чадаагүй үгс минь</span></span>
+      <span class="arr">→</span>
+    </button>
+    <button class="menu-item" onclick="go('gallery')">
+      <span class="num">II.</span>
+      <span class="label"><b>Зүрх</b><span>Бидний дурсамжууд</span></span>
+      <span class="arr">→</span>
+    </button>
+    <button class="menu-item" onclick="go('songs')">
+      <span class="num">III.</span>
+      <span class="label"><b>Дуу</b><span>Чамд сонсгомоор дуунууд</span></span>
+      <span class="arr">→</span>
+    </button>
+  </div>
+</div>
+
+<!-- ============ 3. LETTER ============ -->
+<div class="screen" id="letter">
+  <div class="topbar"><button class="back" onclick="go('menu')">Буцах</button><span class="title">I · Тархи</span></div>
+  <div class="letter-wrap">
+    <div class="letter-date">June 2026</div>
+    <div class="letter-body" id="letterBody"></div>
+    <div class="letter-sign" id="letterSign">— Хүндэтгэсэн: Б.Мөнхбаатар</div>
+  </div>
+</div>
+
+<!-- ============ 4. GALLERY ============ -->
+<div class="screen" id="gallery">
+  <div class="topbar"><button class="back" onclick="go('menu')">Буцах</button><span class="title">II · Зүрх</span></div>
+  <div class="stage" id="stage"></div>
+  <div class="caption" id="caption"></div>
+  <div class="gallery-nav">
+    <button class="nav-arrow" onclick="slide(-1)">←</button>
+    <div class="gallery-count" id="count"></div>
+    <button class="nav-arrow" onclick="slide(1)">→</button>
+  </div>
+</div>
+
+<!-- ============ 5. SONGS ============ -->
+<div class="screen" id="songs">
+  <div class="topbar"><button class="back" onclick="go('menu')">Буцах</button><span class="title">III · The Songs</span></div>
+  <div class="songs-wrap">
+    <div class="songs-note">“Үзэсгэлэнтэй нүдтэй, булцгар хацартай, гоё уруултай хэн нэгэнд гоё эрүүтэй, цэвэрхэн хөмсөгтэй, шар хүнээс.”</div>
+    <div id="trackList"></div>
+  </div>
+</div>
+
+<!-- Ambient music on/off -->
+<button class="music-toggle" id="musicToggle" onclick="toggleMusic()" aria-label="Music">
+  <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+</button>
+
+<script>
+/* ==================== YOUR CONTENT ==================== */
+
+const LETTER = `Энэ мессеж эсвэл захидал шиг текст чамд хэзээ хүрэх эсвэл хэзээ ч хүрэхгүй байхыг би мэдэхгүй, мэдэж чадахгүй ч байж магадгүй л дээ. Гэхдээ энэ сонин юмыг уншиж байгаа өдрийн мэндийг хүргэе.
+
+Сайн уу Маралаа?
+
+Тэр өдөр чиний бичсэн юмыг уншаад чамтай бүтэн амьдралаа үхэн үхтлээ төсөөлсөн байсан зүүд мэт төсөөлөл минь мөс хайлж байгаа мэт урсан алга болохыг өчүүхэн зүрх минь мэдэрч гуниглан, уйлан, шаналан, огт хүлээж авч чадаагүй. Яахаа, яах ёстойгоо ч огт мэдээгүй, юу болж байгааг ч огт ойлгоогүй. Тэр үеийнхээ сэтгэл хөдлөлөөр шууд блоклосон.
+
+Маргааш өглөө нь шууд гаргатал чи намайг шууд блоклосон байсан. Тиймээс олигтой ч салах ёс, хэлэх үгээ ч хэлж чадаагүй. Намайг үнэхээр уучлаарай, би үнэхээр их харамсаж байна.
+
+Цэргийн эрүүл мэндийн бүх шалгуурыг давсан, татав гэсэн бичгээ ч авсан. Менингитийн вакцин заавал хийлэг гээд хийлгэсэн чинь шөнөжин унтаж чадалгүй халуурсан. Халуурах хором мөч, цаг бүрд чамтай байсан үеэ дандаа бодсон. Тэр үед яг л амар тайван унтсан мэт санагдсан учраас унтаж чадаагүй би өөртөө ч унтсан гэж итгүүлжээ, гэтэл үгүй байв.
+
+Аялалд үнэхээр их явмаар санагдсан, ангийнхантайгаа ч цагийг зугаатай өнгөрүүлэхийг хүссэн. Гэхдээ би явбал чамд ч хэцүү, надад ч хэцүү, бид хоёроос болоод уур амьсгал сонин болж ангийнханд ч хэцүү байх гэж бодоод явж чадаагүй ээ.
+
+Мөн дээрээс нь тэр үед чамайг Азаад хэлсэн бүх зүйлийг ангийнхнаас сонссон. Намайг шал өөр хүн мэт харж байгаа ч тэр хүмүүстэй би таарч тохирохгүй болохоор тэр үү огт хамаагүй мэт. Чиний тэдэнд хэлсэн зүйлсийг сонсоход үнэхээр их сэтгэл өвдсөн.
+
+Чамаас хоёр зүйлийг маш сайн ойлгож авсан. Хүн мянга хичээгээд, хайртай байгаад, бүхнээ зориуллаа гээд нөгөө хүн чинь чамайг гэхгүй бол юу ч өөрчлөгдөхгүй, юу ч болж бүтэхгүй.
+
+Харин нөгөөдөх нь хайр гэдэг ганцхан нөгөө хүнийхээ төлөө хичээх, хайрлах биш тэр хүний гаргасан сонголт, шийдвэр, мэдрэмжийг хүндэтгэн тавьж явуулах юм байна.
+
+Тиймээ би үнэхээр бүхнээ хийсэн, хэзээ ч шантрахыг хүсээгүй. Гэхдээ одоо ингэд шантарсанд намайг үнэхээр уучлаарай. Шантрахыг үнэхээр хүсээгүй ч чиний намайг гэхгүй сэтгэл гашуун үнэн аж.
+
+Энэ магадгүй муу ёр байх л даа. Би хэзээ нэг өдөр энэ хорвоогийн мөнх бусыг үзүүлээд алга болоход бурхан надаас чиний амьдралын хамгийн аз жаргалтай сайхан үе хэзээ вэ гэвэл би эргэж буцалтгүй тэр дор нь шууд л Маралаатай байсан 2 сар гэж хариулна.
+
+Эсвэл хүн үхэх үед тархинд нь амьдралынх нь хамгийн гоё жаргалтай дурсамжууд нь 7 минутын турш богино кино шиг харагддаг гэж ярьдаг юм байна лээ. Тэр хэрэв үнэн бол миний тархинд 6 минут 59 секунд нь чамтай байсан тэр үе бодогдох байх (1 sekundn ydj uur yum bodogdh blgude, uguich bj magad xD).
+
+Би эцэст нь ойлгосон, хүлээн зөвшөөрсөн. Зөвхөн нэг хүнийг буруутгах нь буруу. Надад ч мэдээж алдаа, дутагдал, буруу байгаа.
+
+Бид ахиж хамт байж чадахгүй. Магадгүй бид нэгнийгээ хэзээ ч ойлгоогүй байх, чи үнэхээр бэлэн биш байсан.
+
+Бүх зүйлд чинь үнэхээр их баярлалаа. Надад хайр гэдэг ямар зүйл, яаж мэдрэгддэгийг бас жинхэнэ өвдөлт гэдэг зүйл ямар байдгийг мэдрүүлсэнд.
+
+Бид хоёрын хагацал чамд амар амгаланг авчирна гэдэгт найдаж байна. Чамайг зөв зам, өөрийгөө олно гэдэгт ч найдаж байна.
+
+Би ингээд явъя даа. Бидний ирээдүй бүтэлгүйтсэн.
+
+Би үнэхээр их хичээсэн, үнэхээр их ядарлаа. Миний хэлэх гэсэн үгс дуусахад ойртсон байна.
+
+Чамд аз жаргал, сайн сайхныг хүсье.
+
+Чиний миний хажууд байхгүй байгаа нь байснаасаа илүү их өвтгөж байна. Гэхдээ би амьдарч сурна байх аа, даснаа Чамгүйгээр.
+
+Чи миний бүрхэг бороотой амьдралд солонго мэт түр зуур гэрэл гэгээ өгч, хүнийг чин сэтгэлээсээ хайрлах, хайрлуулах, амьдрал ямар утга учиртай, амьдрах ямар үнэ цэнтэйг ойлгуулан чимээгүйхэн алга болсон ч би чамд баярлалаа гэж хэлж чадаагүй.
+
+Баярлалаа чамдаа, надад аз жаргал бэлэглэсэнд.
+
+Магадгүй хоёулаа буруу хүмүүс байсан байх эсвэл буруу цагтаа таарсан зөв хүмүүс ч байж магадгүй.
+
+Чиний хэлдгээр бид хоёрт хувь тавилан гэж байдаг бол тэр өдөр ирэх хүртэл, аль эсвэл зөв цаг нь ирэх хүртэл.
+
+Сайн сууж байгаарай.
+Эрүүл мэнддээ сайн анхаараарай.
+Хоолоо сайн идээрэй.
+Сэрүүхэн өдөр дулаахан хувцаслаж байгаарай.
+Өөрийгөө битгий буруутгаарай.
+Өөртөө битгий хатуу хандаарай, чи хамгийн сайнаараа хичээж байгаа шүү.
+Өөрийгөө хайрлаарай.
+Бага ургуулж бодоорой.
+Зөв сургууль, зөв мэргэжлээ сонгоорой.
+Ажлаа хийхдээ бага өөрийгөө бэртээж гэмтээрэй.
+Легогоо заавал эвлүүлээрэй.
+Миний өгсөн номыг заавал уншаарай.
+Гүйдэг хөөрхөн тугалаа тэвэрч унтаж байгаарай.
+
+Тэр цаг үе хэрэв ирвэл би юу ч болоогүй мэт инээгээд чамайг чанга гэгч нь тэврээд авнаа. Тэгэхэд зөвхөн нэг нь биш хоёулаа хичээнэ шүү, чи ч бэлэн болсон байх байх аа.
+
+Намайг 2 сар хүлээгээрэй, битгий хүлээгээрэй гэж юу ч гуйхгүй ээ, зүгээр л өөрийнхөө хүссэнээр байгаарай.
+
+Магадгүй бид хоёрын хэн нь ч буруугүй байх. Зүгээр л бид хоёрыг буруу цаг үед нь учруулсан бурхны эсвэл цаг хугацааных байх.
+
+Баярлалаа, баяртай, хайртай шүү <3
+
+Ирээдүйн глобал Арлотт-оос (Cecelion arai hudlam shig bnle, mgldo yuin ghes xD)`;
+
+// Your photos & videos (same folder as this file)
+const MEDIA = [
+  { type: 'img',   src: 'combined-image1.jpg', caption: '' },
+  { type: 'img',   src: 'combined-image2.jpg', caption: '' },
+  { type: 'img',   src: 'combined-image3.jpg', caption: 'Mhn tim bhn' },
+  { type: 'img',   src: 'combined-image4.jpg', caption: '' },
+  { type: 'img',   src: 'combined-image5.jpg', caption: '' },
+  { type: 'img',   src: 'combined-image6.jpg', caption: '2026.03.12' },
+  { type: 'img',   src: 'combined-image7.jpg', caption: '<3' },
+  { type: 'img',   src: 'combined-image 8.jpg', caption: 'Mhnnn tim bhneee' },
+  { type: 'img',   src: 'combined-image 9.jpg', caption: '' },
+  { type: 'img',   src: 'combined-image10.jpg', caption: 'Boooodliiin guuuneeees boroooo' },
+  { type: 'img',   src: 'combined-image 11.jpg', caption: 'Belgia shokladtai haasha davsnann 2026.05.21' },
+  { type: 'img',   src: 'combined-image.jpg', caption: '' },
+  { type: 'img',   src: 'image1.jpg', caption: '' },
+  { type: 'img',   src: 'image2.jpg', caption: '' },
+  { type: 'img',   src: 'image3.jpg', caption: 'Ene yahu ndas bolj buruu ticket awsn bdgi' },
+  { type: 'video', src: 'Video1.mp4', caption: 'Pro zetian x badang' },
+  { type: 'video', src: 'Video2.mp4', caption: 'Byadni munhuu 1' },
+  { type: 'video', src: 'Video3.mp4', caption: 'Byadni munhuu 2' },
+  { type: 'video', src: 'Video4.mp4', caption: '' },
+  { type: 'img',   src: 'image4.jpg', caption: 'Floryn build :000' },
+  { type: 'video', src: 'Video5.mp4', caption: 'Gostu marla' },
+  { type: 'img',   src: 'image5.jpg', caption: '' },
+  { type: 'img',   src: 'image6.jpg', caption: '' },
+  { type: 'img',   src: 'image7.jpg', caption: '' },
+  { type: 'img',   src: 'combined-image 12.jpg', caption: 'Our godly ig sticker collections xD' },
+  { type: 'img',   src: 'image8.jpg', caption: '' },
+  { type: 'img',   src: 'image9.jpg', caption: '' },
+  { type: 'img',   src: 'image10.jpg', caption: '' },
+  { type: 'img',   src: 'image11.jpg', caption: '' },
+  { type: 'img',   src: 'image12.jpg', caption: '' },
+  { type: 'img',   src: 'image13.jpg', caption: '' },
+
+];
+
+// Your songs (same folder as this file)
+const SONGS = [
+  { title: 'Circles', artist: 'Post Malone', src: 'Post Malone - Circles.mp3' },
+  { title: 'Odoo', artist: 'Lil Thug E', src: 'Lil Thug E - Odoo (Official Music Video).mp3' },
+  { title: 'Love Me Not', artist: 'Ravyn Lenae', src: 'Ravyn Lenae - Love Me Not (Official Music Video).mp3' },
+  { title: 'Tusuulul Buhen Chi', artist: 'Noubold ft. Bektor Petrovic, Toshiari', src: 'Noubold - Tusuulul Buhen Chi ft. Bektor Petrovic, Toshiari.mp3' },
+  { title: 'Heat Waves', artist: 'Glass Animals', src: 'Glass Animals - Heat Waves (Official Video).mp3' },
+  { title: 'бодлын гүнээс', artist: 'mxrningstar', src: 'mxrningstar - бодлын гүнээс (lyric video).mp3' },
+  { title: 'Haranhuil (My fav)', artist: 'Morningstar', src: 'Morningstar - Haranhuil (Official Music Video).mp3' },
+  { title: 'LOVER (My fav)', artist: 'HASH ft. Man On The Moon', src: 'HASH - LOVER ft. Man On The Moon (Official Video).mp3' },
+];
+
+// Small pictures that fall in the background (same folder as this file)
+const FLOWERS = ['IMG_20260611_152303_829-removebg-preview.png', '648279484_18110901088768612_4310884890559886326_n-removebg-preview.png', 'fall3.png'];
+
+/* ==================== ENGINE (no need to touch) ==================== */
+
+const bg = document.getElementById('bgMusic');
+const toggle = document.getElementById('musicToggle');
+let musicOn = false;
+
+function enter() {
+  bg.volume = .5;
+  bg.play().then(() => { musicOn = true; toggle.classList.add('on'); }).catch(() => {});
+  toggle.classList.add('show');
+  go('menu');
+}
+
+function toggleMusic() {
+  musicOn = !musicOn;
+  musicOn ? bg.play() : bg.pause();
+  toggle.classList.toggle('on', musicOn);
+}
+
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  stopAllSongs();
+  if (id === 'letter') typeLetter();
+  if (id === 'gallery') renderSlide();
+  if (id === 'songs' && musicOn) bg.pause();
+  else if (musicOn) bg.play().catch(() => {});
+}
+
+/* ---- Typewriter letter (tap the text to show all instantly) ---- */
+let typing = null;
+function typeLetter() {
+  clearInterval(typing);
+  const body = document.getElementById('letterBody');
+  const sign = document.getElementById('letterSign');
+  sign.classList.remove('show');
+  body.innerHTML = '<span class="cursor"></span>';
+  let i = 0;
+  const finish = () => {
+    clearInterval(typing);
+    body.innerHTML = LETTER.replace(/\n/g, '<br>');
+    sign.classList.add('show');
+    body.onclick = null;
+  };
+  body.onclick = finish;
+  typing = setInterval(() => {
+    i += 3;
+    body.innerHTML = LETTER.slice(0, i).replace(/\n/g, '<br>') + '<span class="cursor"></span>';
+    if (i >= LETTER.length) finish();
+  }, 24);
+}
+
+/* ---- Gallery ---- */
+let idx = 0;
+function renderSlide() {
+  const m = MEDIA[idx];
+  const stage = document.getElementById('stage');
+  stage.innerHTML = m.type === 'video'
+    ? `<video class="media" src="${m.src}" controls playsinline></video>`
+    : `<img class="media" src="${m.src}" alt="">`;
+  document.getElementById('caption').textContent = m.caption || '';
+  document.getElementById('count').innerHTML = `<b>${String(idx+1).padStart(2,'0')}</b> / ${String(MEDIA.length).padStart(2,'0')}`;
+}
+function slide(dir) { idx = (idx + dir + MEDIA.length) % MEDIA.length; renderSlide(); }
+
+// swipe support
+let touchX = null;
+document.getElementById('stage').addEventListener('touchstart', e => touchX = e.touches[0].clientX, {passive:true});
+document.getElementById('stage').addEventListener('touchend', e => {
+  if (touchX === null) return;
+  const d = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(d) > 50) slide(d < 0 ? 1 : -1);
+  touchX = null;
+}, {passive:true});
+
+/* ---- Songs ---- */
+const list = document.getElementById('trackList');
+const players = [];
+SONGS.forEach((s) => {
+  const el = document.createElement('div');
+  el.className = 'track';
+  el.innerHTML = `
+    <div class="track-row">
+      <button class="play-btn">▶</button>
+      <div class="track-meta"><b>${s.title}</b><span>${s.artist}</span></div>
+    </div>
+    <div class="track-progress"><i></i></div>`;
+  list.appendChild(el);
+  const audio = new Audio(s.src);
+  players.push({ el, audio });
+  const btn = el.querySelector('.play-btn');
+  const bar = el.querySelector('.track-progress i');
+  btn.onclick = () => {
+    if (!audio.paused) { audio.pause(); el.classList.remove('playing'); btn.textContent = '▶'; return; }
+    stopAllSongs();
+    audio.play(); el.classList.add('playing'); btn.textContent = '❚❚';
+  };
+  audio.ontimeupdate = () => bar.style.width = (audio.currentTime / audio.duration * 100) + '%';
+  audio.onended = () => { el.classList.remove('playing'); btn.textContent = '▶'; bar.style.width = '0%'; };
+});
+function stopAllSongs() {
+  players.forEach(p => {
+    p.audio.pause();
+    p.el.classList.remove('playing');
+    p.el.querySelector('.play-btn').textContent = '▶';
+  });
+}
+
+/* ---- Falling pictures ---- */
+const petalLayer = document.createElement('div');
+petalLayer.id = 'petals';
+document.body.appendChild(petalLayer);
+
+function dropPetal() {
+  const p = document.createElement('img');
+  p.className = 'petal';
+  p.src = FLOWERS[Math.floor(Math.random() * FLOWERS.length)];
+  p.onerror = () => p.remove();   // missing file = no broken icon
+  const duration = 7 + Math.random() * 8;
+  p.style.left = Math.random() * 100 + 'vw';
+  p.style.width = (24 + Math.random() * 26) + 'px';
+  p.style.opacity = .35 + Math.random() * .5;
+  p.style.animationDuration = duration + 's, ' + (2 + Math.random() * 2) + 's';
+  p.style.animationDelay = '0s, ' + Math.random() + 's';
+  petalLayer.appendChild(p);
+  setTimeout(() => p.remove(), duration * 1000);
+}
+
+setInterval(dropPetal, 600);
+for (let i = 0; i < 8; i++) setTimeout(dropPetal, i * 300);
+</script>
+</body>
+</html>
